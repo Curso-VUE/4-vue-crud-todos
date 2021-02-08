@@ -4,6 +4,8 @@
 2. [Instalación de dependencias](#dependencies)
 3. [Explicación del proyecto y el router de vue](#router)
 4. [Desarrollar plugins para utilizar las dependencias instaladas](#plugins)
+5. [Iniciar módulo TODOS, definir estado, getters y mutaciones](#todos-module)
+6. [Consumir la API utilziando vue-axios a través de acciones](#actions)
 
 <hr>
 
@@ -144,3 +146,210 @@ require('./vue-axios');
 require('./vuelidate');
 ~~~
 
+
+<hr>
+
+<a name="todos-module"></a>
+
+## 5. Iniciar módulo TODOS, definir estado, getters y mutaciones
+
+Creamos el directorio *src/modules* y en su interior los archivos en donde configuraremos state, actions, mutations y getters. Incluimos un *index.js* para importar estos archivos:
+
+~~~js
+import state from './state';
+import * as mutations from './mutations';
+import * as actions from './actions';
+import * as getters from './getters';
+
+export default {
+  namespaced: true,
+  state,
+  mutations,
+  actions,
+  getters
+}
+~~~
+
+### State
+
+Establecemos el estado que tendrá este módulo:
+
+~~~js
+export default {
+  todos: [],
+  selectedTodo: null,
+  error: false,
+  errorMessage: ''
+}
+~~~
+
+### Getters
+
+Utilizaremos los getters para obtener listas de tareas filtradas por su estado.
+
+~~~js
+export function pending(state) {
+  return state.todos.filter( todo => !todo.done );
+}
+
+export function done(state) {
+  return state.todos.filter( todo => todo.done );
+}
+~~~
+
+### Mutations
+
+Definimos las funciones que alterarán los datos del estado:
+
+~~~js
+export function setTodos(state, todos) {
+  state.todos = todos;
+}
+
+export function setTodo(state, todo) {
+  state.selectedTodo = todo;
+}
+
+export function updateTodoStatus(state, payload) {
+  const todo = state.todos.find( t => t.id === payload.id );
+  if (todo) {
+    todo.done = !todo.done;
+  }
+}
+
+export function todosError(state, payload) {
+  state.error = true;
+  state.errorMessage = payload;
+  state.todos = [];
+}
+~~~
+
+
+<hr>
+
+<a name="actions"></a>
+
+## 6. Consumir la API utilziando vue-axios a través de acciones
+
+En el archivo *src/todos/actions.js* las distintas llamadas asíncronas que realizará la aplicación:
+
+- Obtener la lista de tareas:
+
+~~~js
+import Vue from 'vue';
+
+export async function fetchTodos({commit}) {
+  try {
+    const { data } = await Vue.axios({
+      url: '/todos'
+    })
+    commit('todos/setTodos', data, {root: true})
+  } catch (error) {
+    commit('todos/todosError', error.message, {root: true})
+  } finally {
+    console.log('La petición para obtener los datos ha finalizado.')
+  }
+}
+~~~
+
+- Crear una tarea:
+
+~~~js
+export async function addTodo({commit}, todo) {
+  try {
+    await Vue.axios({
+      method: 'POST',
+      url: '/todos',
+      data: {
+        id: Date.now(),
+        text: todo.text,
+        done: false
+      }
+    })
+  } catch (error) {
+    commit('todos/todosError', error.message, {root: true})
+  } finally {
+    console.log('La petición para crear un todo ha finalizado.')
+  }
+}
+~~~
+
+- Actualizar una tarea: 
+
+~~~js
+export async function updateTodo({commit}, todo) {
+  try {
+    await Vue.axios({
+      method: 'PUT',
+      url: `/todos/${todo.id}`,
+      data: {
+        id: todo.id,
+        text: todo.text,
+        done: todo.done
+      }
+    })
+  } catch (error) {
+    commit('todos/todosError', error.message, {root: true})
+  } finally {
+    console.log('La petición para crear un todo ha finalizado.')
+  }
+}
+~~~
+
+- Actualizar el estado de una tarea: 
+
+~~~js
+export async function updateTodoStatus({commit}, todo) {
+  try {
+    await Vue.axios({
+      method: 'PUT',
+      url: `/todos/${todo.id}`,
+      data: {
+        id: todo.id,
+        text: todo.text,
+        done: !todo.done
+      }
+    })
+  } catch (error) {
+    commit('todos/todosError', error.message, {root: true})
+  } finally {
+    console.log('La petición para actualizar el estado de un todo ha finalizado.')
+  }
+}
+~~~
+
+- Eliminar una tarea:
+
+~~~js
+export async function removeTodo({commit, dispatch}, id) {
+  try {
+    await Vue.axios({
+      method: 'DELETE',
+      url: `/todos/${id}`
+    })
+    dispatch('fetchTodos')
+  } catch (error) {
+    commit('todos/todosError', error.message, {root: true})
+  } finally {
+    console.log('La petición para actualizar el estado de un todo ha finalizado.')
+  }
+}
+~~~
+
+> Dispatch permite lanzar otra acción, en este caso para volver a obtener la lista de tareas una vez eliminada una de ellas.
+
+Por último sólo nos falta cargar el módulo en el **store**, que quedaría de la siguiente manera:
+
+~~~js
+import Vue from 'vue'
+import Vuex from 'vuex'
+import todos from '../modules/todos'
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  modules: {
+    todos
+  }
+})
+~~~
