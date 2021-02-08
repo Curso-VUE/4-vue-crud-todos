@@ -6,6 +6,7 @@
 4. [Desarrollar plugins para utilizar las dependencias instaladas](#plugins)
 5. [Iniciar módulo TODOS, definir estado, getters y mutaciones](#todos-module)
 6. [Consumir la API utilziando vue-axios a través de acciones](#actions)
+7. [Vistas, rutas y modificar el componente APP con la nueva navecación](#views-routes)
 
 <hr>
 
@@ -352,4 +353,59 @@ export default new Vuex.Store({
     todos
   }
 })
+~~~
+
+<hr>
+
+<a name="views-routes"></a>
+
+## 7. Vistas, rutas y modificar el componente APP con la nueva navecación
+
+Eliminamos los archivos por defecto de las vistas y creamos tres vistas nuevas:
+- Todos.vue
+- TodoCreate.vue
+- TodoUpdate.vue
+
+Por el momento, simplemente creamos los archivos con un template que nos permita visualizar el cambio de una página a otra.
+
+Modificamos el router para incluir las rutas a las nuevas páginas:
+
+~~~js
+const routes = [
+  {
+    path: '/',
+    name: 'Home',
+    redirect: '/todos'
+  },
+  {
+    path: '/todos',
+    name: 'todos',
+    component: () => import(/* webpackChunkName: "todos" */ '../views/Todos.vue')
+  },
+  {
+    path: '/todos/create',
+    name: 'todos-create',
+    component: () => import(/* webpackChunkName: "todos-create" */ '../views/TodoCreate.vue')
+  },
+  {
+    path: '/todos/:id/update',
+    name: 'todos-update',
+    component: () => import(/* webpackChunkName: "todos-update" */ '../views/TodoUpdate.vue')
+  }
+]
+~~~
+
+> La ruta de update recibe un parámetro id.
+
+Modificamos el *App.vue* para cargar las nuevas rutas, utilizando bootstrap-vue.
+
+~~~html
+<template>
+  <b-container>
+    <b-nav tabs>
+      <b-nav-item exact to="todos">Listado de tareas</b-nav-item>
+      <b-nav-item exact to="todos/create">Formulario de alta de tareas</b-nav-item>
+    </b-nav>
+  </b-container>
+</template>
 ~~~
